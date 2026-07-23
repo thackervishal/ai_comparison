@@ -178,6 +178,23 @@ table if it's been a while.
 | Subnet used | `postgres-sample-db` | `subnet-057bd08c94e6d4869` |
 | Public IP (at creation) | `postgres-sample-db` | `54.226.220.95` |
 
+Connection details (re-derive host from `terraform output public_ip` if it's
+since changed — the rest is fixed, baked into the Docker image):
+
+| Field | Value |
+| --- | --- |
+| Host | `54.226.220.95` |
+| Port | `5432` |
+| Database | `sample` |
+| Username | `metabase` |
+| Password | `metasample123` |
+
+Full connection string, same info assembled together:
+
+```text
+postgresql://metabase:metasample123@54.226.220.95:5432/sample
+```
+
 To tear everything down manually (in reverse order of creation, only if
 `terraform destroy` isn't available):
 
