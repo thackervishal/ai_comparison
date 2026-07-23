@@ -1,0 +1,12 @@
+# Copy this file to terraform.tfvars and fill in your own values.
+# terraform.tfvars is gitignored -- don't commit real IPs if this repo is shared.
+
+aws_region = "us-east-1"
+
+# Your current public IP, as a /32 -- e.g. run `curl -s ifconfig.me` and append "/32".
+my_ip_cidr = "203.0.113.4/32" # replace with your IP
+
+# The QuickSight IP range for aws_region is looked up automatically from
+# quicksight_ip_ranges.tf. Only set this if your region isn't in that map,
+# or AWS has changed the published range since 2026-07-22:
+# quicksight_ip_override = "1.2.3.4/27"

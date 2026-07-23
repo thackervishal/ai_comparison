@@ -1,0 +1,8 @@
+.terraform/
+# .terraform.lock.hcl is intentionally NOT ignored -- commit it.
+# terraform.tfstate IS ignored here on purpose: this module's state stays
+# local (see README) since only one person ever runs it, once.
+terraform.tfstate
+terraform.tfstate.backup
+*.tfplan
+crash.log
