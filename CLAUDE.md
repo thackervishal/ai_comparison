@@ -1,50 +1,10 @@
-# Context: QuickSight vs Metabase AI Capabilities Comparison
+# QuickSight vs Metabase Comparison — Infra & Session Log
 
-## Goal
-Comparing Amazon QuickSight (now rebranded "Amazon Quick Suite" / "Amazon Quick") and
-Metabase on their AI capabilities, using a shared sample dataset for hands-on testing.
-Have a local Metabase stack already running against the Metabase QA sample Postgres DB.
-Want to stand up the *same* sample DB on AWS so QuickSight can connect to it, then build
-out the semantic-layer/AI features in both tools side by side.
-
-## Comparison framework (already researched, use as the report skeleton)
-1. Short list of known features (per product)
-2. Where AI is available today (in-product / API / MCP)
-3. Whether the same AI capabilities are consistent across those surfaces
-4. How extensible each is (embedding, custom models, governance controls)
-
-Deeper questions to answer along the way:
-- How do users diagnose/correct wrong AI answers without vendor help?
-- How does the AI stay aligned with governed metrics/business definitions?
-- Who can modify AI behavior, and how?
-- What context sources does the AI draw on to understand the data/business?
-- How does it integrate with existing data ecosystems/governance?
-- How do users improve AI performance post-deployment, and who can do it?
-- What workflows exist for monitoring quality and catching failures over time?
-
-## Key research findings so far
-- **QuickSight rebrand**: QuickSight was renamed Amazon Quick Suite (Oct 9, 2025), then
-  further shortened to "Amazon Quick" in some UI/docs. Same underlying BI engine (SPICE),
-  new AI layer bundled in (Quick chat, Quick Research, Quick Flows, Quick Automate, Quick
-  Index). Expect inconsistent naming across docs/screenshots depending on age.
-- **QuickSight AI**: NLQ/Q&A via "Topics" (a semantic layer you configure with synonyms,
-  friendly names, named filters, semantic types), Generative BI dashboard authoring,
-  natural-language calculated fields, executive summaries, "Generate Analysis"/data
-  stories. Powered by Amazon Bedrock LLMs. MCP support exists but mainly in the
-  *client* direction (Quick agents calling out to external MCP tools, e.g. New Relic),
-  not clearly as an MCP server other agents connect to.
-- **Metabase AI**: Metabot (chat assistant — NLQ, SQL generation, error fixing, chart/
-  dashboard summaries), an official MCP **server** (Metabase can be connected to from
-  Claude or other AI clients), an Agent API, AI governance features added in v61
-  (per-group access controls, token/message limits, custom system prompts, usage
-  analytics), bring-your-own-model support (Anthropic supported now, more providers
-  coming per v63 — OpenAI, Bedrock, Azure).
-- **Key architectural contrast to highlight in the report**: Metabase positions itself as
-  something your AI stack plugs *into* (MCP server); QuickSight/Quick positions itself as
-  an agent that plugs *into* other systems (MCP client). Worth digging into further.
-- Flagged as "needs deeper verification": exact API parity for QuickSight's generative
-  authoring features outside the console/embedded SDK; live pricing/tier gating for AI
-  features on both sides.
+This file tracks *setup/infra history* only — what's been installed, deployed, and how
+to pick this up on another machine. The comparison framework, research findings on
+QuickSight/Metabase AI capabilities, and the semantic-layer build plan live in
+`quicksight/RESEARCH.md` instead, kept separate so this file (auto-loaded every session)
+stays small.
 
 ## Sample dataset details (metabase/qa-databases:postgres-sample-15)
 - Docker image: `metabase/qa-databases:postgres-sample-15`
@@ -69,6 +29,8 @@ Terraform stands up a small EC2 instance running this same Docker image so Quick
   connection form (Server = public IP, Port 5432, Database `sample`, user/pass as above),
   then build a dataset from a table/query on top of that data source.
 - Clean `terraform destroy` path so the box isn't left running/billing between sessions.
+- Full connection details and the current resource ID table live in
+  `quicksight/infra/postgres-sample-db/README.md` under "Currently Deployed Resources".
 
 ### What actually happened this session
 - Neither `terraform` nor the `aws` CLI were installed locally — installed both (apt repo
@@ -95,38 +57,11 @@ Terraform stands up a small EC2 instance running this same Docker image so Quick
 - Confirmed: you can reach the DB directly from your laptop with
   `psql "postgresql://metabase:metasample123@<public_ip>:5432/sample"` since your IP is
   in the security group. QuickSight itself is a separate SaaS subscription Terraform
-  doesn't create — sign up at quicksight.aws.amazon.com (Standard edition, `us-east-1`)
-  if not already done, then Datasets → New dataset → PostgreSQL to create the data source,
-  then build the dataset from a table/query on top of it.
-
-## Semantic-layer objects to build once the DB is connected (for testing the AI tools)
-**QuickSight:**
-- Dataset(s) from the `sample` tables, imported to SPICE
-- Calculated fields (e.g. profit margin, order-to-ship days)
-- A Topic with friendly names/synonyms mapped onto fields (this is QuickSight's semantic
-  layer for NLQ — e.g. "revenue" → TOTAL, "customer" → PEOPLE.NAME)
-- Named filters, default date field, semantic type overrides in the Topic
-- A dashboard for Executive Summaries / Generate Analysis / data stories
-- Optional: row-level security to test whether AI answers respect it
-
-**Metabase:**
-- Database connection to `sample` (either existing local instance, or a second connection
-  pointed at the new AWS-hosted copy for a literal shared instance)
-- A Model (curated/renamed table or join) — Metabase's semantic-layer equivalent to a
-  QuickSight Topic
-- A Metric (e.g. governed "Total Revenue" definition)
-- A couple of Verified Questions/dashboards
-- Metabot enabled with an AI provider key (have an Anthropic key available)
-- The official Metabase MCP server running, pointed at this instance, for testing the
-  MCP-client (Claude → Metabase) direction directly
+  doesn't create — signed up (Standard edition, `us-east-1`), created the PostgreSQL data
+  source successfully.
 
 ## Immediate next step
-EC2 box is up and reachable (see "AWS setup — DEPLOYED" above). Next: finish the
-QuickSight signup if not already done (Standard edition, `us-east-1`), create the
-PostgreSQL data source and a first dataset from it, then move on to building the
-QuickSight Topic and Metabase Model/Metric definitions for this specific schema.
-
-## Deliverable
-Working folder with: Terraform code for the AWS Postgres sandbox (done), a README
-tracking setup steps and findings, and eventually a written comparison report following
-the 4-part framework above.
+EC2 box is up and reachable, QuickSight data source is created. Next: build the actual
+dataset(s) and Topic — see `quicksight/RESEARCH.md` for the semantic-layer build plan
+(the dataset/Topic join-key finding recorded there matters for how this gets built) and
+the open research questions for the comparison report.
