@@ -160,6 +160,32 @@ terraform destroy
 
 and re-`apply` next time — the whole thing (instance boot + Docker pull) takes a couple of minutes.
 
+## Currently Deployed Resources
+
+Point-in-time record from the first `apply` (account `388096319864`,
+`us-east-1`, 2026-07-22) — for manual cleanup via the AWS console/CLI if
+Terraform state is ever unavailable. `terraform state list` / `terraform
+show` in each directory is the actual source of truth. The public IP and
+instance ID change on every destroy/recreate, and the public IP also changes
+on stop/start, so re-check with `terraform output` before trusting this
+table if it's been a while.
+
+| Resource | Module | Identifier |
+| --- | --- | --- |
+| S3 state bucket | `state-bootstrap` | `qs-mb-tfstate-388096319864` |
+| Security group | `postgres-sample-db` | `sg-08639fa4c68a5dd04` (`qs-mb-sample-db-sg`) |
+| EC2 instance | `postgres-sample-db` | `i-03179ab1d45ae31e5` (`qs-mb-sample-db`) |
+| Subnet used | `postgres-sample-db` | `subnet-057bd08c94e6d4869` |
+| Public IP (at creation) | `postgres-sample-db` | `54.226.220.95` |
+
+To tear everything down manually (in reverse order of creation, only if
+`terraform destroy` isn't available):
+
+1. Terminate the EC2 instance.
+2. Delete the security group (after the instance is gone).
+3. Empty and delete the S3 bucket (versioned, so delete all object versions
+   first: `aws s3api delete-objects` or the console's "empty bucket" action).
+
 ## Connecting Metabase
 
 Add a second Postgres data source in Metabase pointed at `terraform output
@@ -169,11 +195,15 @@ literal same running instance rather than two copies of the same data.
 
 ## Connecting QuickSight
 
-QuickSight → New dataset → PostgreSQL:
+QuickSight → Datasets → New dataset → PostgreSQL, which first creates a data
+source (the connection):
 - Server: `terraform output public_ip`
 - Port: 5432
 - Database: `sample`
 - Username / Password: `metabase` / `metasample123`
+
+Then pick a table (or write a custom SQL query) to create the dataset itself
+from that data source.
 
 ## Files
 

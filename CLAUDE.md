@@ -54,7 +54,7 @@ Deeper questions to answer along the way:
   password `metasample123`
 - Already running locally for the Metabase side of the comparison
 
-## AWS setup (done — see infra/postgres-sample-db/)
+## AWS setup — DEPLOYED (2026-07-22, see quicksight/infra/postgres-sample-db/)
 Terraform stands up a small EC2 instance running this same Docker image so QuickSight
 (a SaaS product with no "localhost" connector) can reach it.
 - `aws_instance`: Amazon Linux 2023, t3.micro, with `user_data` to install Docker and run
@@ -65,12 +65,39 @@ Terraform stands up a small EC2 instance running this same Docker image so Quick
   ip-ranges.json directly) — QuickSight's ranges are only published as a static table at
   https://docs.aws.amazon.com/quicksight/latest/user/regions.html, so that table is
   hardcoded into `quicksight_ip_ranges.tf` instead, with an override variable.
-- Outputs: public IP, ready to paste into QuickSight's "New dataset → PostgreSQL"
-  connection form (Server = public IP, Port 5432, Database `sample`, user/pass as above)
-- Clean `terraform destroy` path so the box isn't left running/billing between sessions
-- Terraform was written and HCL-syntax-checked in the Cowork sandbox, but **not** run —
-  no AWS credentials or working `terraform`/`aws` CLI available there. Needs `terraform
-  init && terraform plan && terraform apply` run locally by you.
+- Outputs: public IP, ready to paste into QuickSight's "New data source → PostgreSQL"
+  connection form (Server = public IP, Port 5432, Database `sample`, user/pass as above),
+  then build a dataset from a table/query on top of that data source.
+- Clean `terraform destroy` path so the box isn't left running/billing between sessions.
+
+### What actually happened this session
+- Neither `terraform` nor the `aws` CLI were installed locally — installed both (apt repo
+  for Terraform, AWS's official installer for the CLI). Auth was via `aws login` (CLI v2's
+  browser-based flow that reuses an existing AWS Console session — no access keys needed).
+- Ran `state-bootstrap` first (creates the S3 bucket the main config uses as its remote
+  backend) → bucket `qs-mb-tfstate-388096319864`. Wired that into
+  `quicksight/infra/postgres-sample-db/backend.hcl` (copied from the `.example`,
+  committed — it's just bucket coordinates, not a secret).
+- Filled `quicksight/infra/postgres-sample-db/terraform.tfvars` (gitignored) with the
+  real public IP.
+- First `terraform apply` on the main config **failed**: `t3.micro` isn't offered in
+  `us-east-1e`, and `vpc.tf` picked a subnet with `data.aws_subnets.default.ids[0]`
+  blindly, landing on that AZ. Fixed by adding a
+  `data.aws_ec2_instance_type_offerings` lookup in `vpc.tf` and filtering the subnet
+  query to only AZs that actually support `var.instance_type` — general fix, not
+  hardcoded to `us-east-1e`, so it holds if the account/region/instance type changes.
+  Re-ran `apply` and it succeeded.
+- Full "currently deployed resources" table (bucket, security group, instance ID, subnet,
+  public IP at creation) plus manual-teardown-without-Terraform steps are now recorded in
+  `quicksight/infra/postgres-sample-db/README.md` under "Currently Deployed Resources" —
+  check there (or `terraform output`/`terraform state list`) for current values, since
+  public IP and instance ID change on stop/start or destroy/recreate.
+- Confirmed: you can reach the DB directly from your laptop with
+  `psql "postgresql://metabase:metasample123@<public_ip>:5432/sample"` since your IP is
+  in the security group. QuickSight itself is a separate SaaS subscription Terraform
+  doesn't create — sign up at quicksight.aws.amazon.com (Standard edition, `us-east-1`)
+  if not already done, then Datasets → New dataset → PostgreSQL to create the data source,
+  then build the dataset from a table/query on top of it.
 
 ## Semantic-layer objects to build once the DB is connected (for testing the AI tools)
 **QuickSight:**
@@ -94,9 +121,10 @@ Terraform stands up a small EC2 instance running this same Docker image so Quick
   MCP-client (Claude → Metabase) direction directly
 
 ## Immediate next step
-Run the Terraform in `infra/postgres-sample-db/` to stand up the EC2 box, then move on to
-building the QuickSight Topic and Metabase Model/Metric definitions for this specific
-schema.
+EC2 box is up and reachable (see "AWS setup — DEPLOYED" above). Next: finish the
+QuickSight signup if not already done (Standard edition, `us-east-1`), create the
+PostgreSQL data source and a first dataset from it, then move on to building the
+QuickSight Topic and Metabase Model/Metric definitions for this specific schema.
 
 ## Deliverable
 Working folder with: Terraform code for the AWS Postgres sandbox (done), a README
